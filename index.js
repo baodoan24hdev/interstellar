@@ -5,7 +5,6 @@
 // Works both in browser and node.js
 
 require('dotenv').config()
-const fs = require('fs')
 const assert = require('assert')
 const snarkjs = require('snarkjs')
 const crypto = require('crypto')
@@ -22,10 +21,10 @@ const userBalance = document.getElementById('userBalance')
 const noteText = document.getElementById('noteText')
 let myModal = new bootstrap.Modal(document.getElementById('exampleModal'), {})
 
-let web3, tornado, tornadoContract, tornadoInstance, circuit, proving_key, groth16, senderAccount, netId
+let web3, inter, interContract, interInstance, circuit, proving_key, groth16, senderAccount, netId
 let MERKLE_TREE_HEIGHT, ETH_AMOUNT
 
-/** Whether we are in a browser or node.js */
+/** Browser or node.js */
 const inBrowser = typeof window !== 'undefined'
 let isLocalRPC = false
 
@@ -70,16 +69,16 @@ async function deposit({ currency, amount }) {
     secret: rbigint(31)
   })
   const note = toHex(deposit.preimage, 62)
-  const noteString = `tornado-${currency}-${amount}-${netId}-${note}`
+  const noteString = `interstellar-${currency}-${amount}-${netId}-${note}`
   console.log(`Your note: ${noteString}`)
   myModal.show()
   noteText.innerText = noteString
-  await printETHBalance({ address: tornado._address, name: 'Tornado' })
+  await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
   const value = isLocalRPC ? ETH_AMOUNT : fromDecimals({ amount, decimals: 18 })
   console.log('Submitting deposit transaction')
-  await tornado.methods.deposit(tornadoInstance, toHex(deposit.commitment), []).send({ value, from: senderAccount, gas: 2e6 })
-  await printETHBalance({ address: tornado._address, name: 'Tornado' })
+  await inter.methods.deposit(interInstance, toHex(deposit.commitment), []).send({ value, from: senderAccount, gas: 2e6 })
+  await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
 
   return noteString
@@ -87,9 +86,8 @@ async function deposit({ currency, amount }) {
 
 /**
  * Generate merkle tree for a deposit.
- * Download deposit events from the tornado, reconstructs merkle tree, finds our deposit leaf
+ * Download deposit events from the interstellar, reconstructs merkle tree, finds our deposit leaf
  * in it and generates merkle proof
- * @param deposit Deposit object
  */
 async function generateMerkleProof(deposit, amount) {
   let leafIndex = -1
@@ -99,7 +97,7 @@ async function generateMerkleProof(deposit, amount) {
 
   const startBlock = cachedEvents.lastBlock
 
-  let rpcEvents = await tornadoContract.getPastEvents('Deposit', {
+  let rpcEvents = await interContract.getPastEvents('Deposit', {
     fromBlock: startBlock,
     toBlock: 'latest'
   })
@@ -132,8 +130,8 @@ async function generateMerkleProof(deposit, amount) {
 
   // Validate that our data is correct
   const root = await tree.root()
-  const isValidRoot = await tornadoContract.methods.isKnownRoot(toHex(root)).call()
-  const isSpent = await tornadoContract.methods.isSpent(toHex(deposit.nullifierHash)).call()
+  const isValidRoot = await interContract.methods.isKnownRoot(toHex(root)).call()
+  const isSpent = await interContract.methods.isSpent(toHex(deposit.nullifierHash)).call()
   assert(isValidRoot === true, 'Merkle tree is corrupted')
   assert(isSpent === false, 'The note is already spent')
   assert(leafIndex >= 0, 'The deposit is not found in the tree')
@@ -203,15 +201,11 @@ async function withdraw({ deposit, currency, recipient, refund = '0' }) {
   const { proof, args } = await generateProof({ deposit, recipient, refund })
 
   console.log('Submitting withdraw transaction')
-  await tornado.methods
-    .withdraw(tornadoInstance, proof, ...args)
+  await inter.methods
+    .withdraw(interInstance, proof, ...args)
     .send({ from: senderAccount, value: refund.toString(), gas: 1e6 })
     .on('transactionHash', function (txHash) {
-      if (netId === 1 || netId === 42) {
-        console.log(`View transaction on etherscan https://${getCurrentNetworkName()}etherscan.io/tx/${txHash}`)
-      } else {
-        console.log(`The transaction hash is ${txHash}`)
-      }
+      console.log(`The transaction hash is https://goerli.etherscan.io/tx/${txHash}`)
     })
     .on('error', function (e) {
       console.error('on transactionHash error', e.message)
@@ -268,17 +262,6 @@ function fromDecimals({ amount, decimals }) {
   return new BN(wei.toString(10), 10)
 }
 
-function getCurrentNetworkName() {
-  switch (netId) {
-    case 1:
-      return ''
-    case 5:
-      return 'goerli.'
-    case 42:
-      return 'kovan.'
-  }
-}
-
 /**
  * Waits for transaction to be mined
  * @param txHash Hash of transaction
@@ -311,11 +294,10 @@ function loadCachedEvents({ type, amount }) {
 }
 
 /**
- * Parses Tornado.cash note
- * @param noteString the note
+ * Parses interstellar.cash note
  */
 function parseNote(noteString) {
-  const noteRegex = /tornado-(?<currency>\w+)-(?<amount>[\d.]+)-(?<netId>\d+)-0x(?<note>[0-9a-fA-F]{124})/g
+  const noteRegex = /interstellar-(?<currency>\w+)-(?<amount>[\d.]+)-(?<netId>\d+)-0x(?<note>[0-9a-fA-F]{124})/g
   const match = noteRegex.exec(noteString)
   if (!match) {
     throw new Error('The note has invalid format')
@@ -339,7 +321,7 @@ function parseNote(noteString) {
  * Init web3, contracts, and snark
  */
 async function init({ noteNetId, currency = 'dai', amount = '100' }) {
-  let contractJson, instanceJson, erc20tornadoJson, tornadoAddress
+  let contractJson, instanceJson, erc20interJson, interAddress
   // TODO do we need this? should it work in browser really?
   if (inBrowser) {
     // Initialize using injected web3 (Metamask)
@@ -366,23 +348,23 @@ async function init({ noteNetId, currency = 'dai', amount = '100' }) {
   isLocalRPC = netId > 42
 
   if (isLocalRPC) {
-    tornadoAddress = currency === 'eth' ? contractJson.networks[netId].address : erc20tornadoJson.networks[netId].address
+    interAddress = currency === 'eth' ? contractJson.networks[netId].address : erc20interJson.networks[netId].address
     senderAccount = (await web3.eth.getAccounts())[0]
   } else {
     try {
-      tornadoAddress = config.deployments[`netId${netId}`].proxy
-      tornadoInstance = config.deployments[`netId${netId}`][currency].instanceAddress[amount]
+      interAddress = config.deployments[`netId${netId}`].proxy
+      interInstance = config.deployments[`netId${netId}`][currency].instanceAddress[amount]
 
-      if (!tornadoAddress) {
+      if (!interAddress) {
         throw new Error()
       }
     } catch (e) {
-      console.error('There is no such tornado instance, check the currency and amount you provide')
+      console.error('There is no such inter instance, check the currency and amount you provide')
       process.exit(1)
     }
   }
-  tornado = new web3.eth.Contract(contractJson, tornadoAddress)
-  tornadoContract = new web3.eth.Contract(instanceJson, tornadoInstance)
+  inter = new web3.eth.Contract(contractJson, interAddress)
+  interContract = new web3.eth.Contract(instanceJson, interInstance)
 }
 
 async function main() {
@@ -408,7 +390,7 @@ async function main() {
 main()
 
 }).call(this)}).call(this,require('_process'),require("buffer").Buffer)
-},{"./config":2,"./lib/MerkleTree":3,"_process":412,"assert":126,"buffer":191,"circomlib":213,"crypto":235,"dotenv":247,"fs":190,"snarkjs":441,"web3":562,"web3-utils":559,"websnark/src/groth16":565,"websnark/src/utils":566}],2:[function(require,module,exports){
+},{"./config":2,"./lib/MerkleTree":3,"_process":412,"assert":126,"buffer":191,"circomlib":213,"crypto":235,"dotenv":247,"snarkjs":441,"web3":562,"web3-utils":559,"websnark/src/groth16":565,"websnark/src/utils":566}],2:[function(require,module,exports){
 require('dotenv').config()
 
 module.exports = {
