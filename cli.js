@@ -374,7 +374,8 @@ async function main() {
     }
     window.withdraw = async () => {
       const noteString = prompt('Enter the note to withdraw')
-      const recipient = (await web3.eth.getAccounts())[0]
+      const recipient = prompt('Enter the address to withdraw')
+      // const recipient = (await web3.eth.getAccounts())[0]
 
       const { currency, amount, netId, deposit } = parseNote(noteString)
       await init({ noteNetId: netId, currency, amount })

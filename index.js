@@ -68,6 +68,7 @@ async function deposit({ currency, amount }) {
     nullifier: rbigint(31),
     secret: rbigint(31)
   })
+  console.log(rbigint(31))
   const note = toHex(deposit.preimage, 62)
   const noteString = `interstellar-${currency}-${amount}-${netId}-${note}`
   console.log(`Your note: ${noteString}`)
@@ -75,9 +76,9 @@ async function deposit({ currency, amount }) {
   noteText.innerText = noteString
   await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
-  const value = isLocalRPC ? ETH_AMOUNT : fromDecimals({ amount, decimals: 18 })
+  // const value = isLocalRPC ? ETH_AMOUNT : fromDecimals({ amount, decimals: 18 })
   console.log('Submitting deposit transaction')
-  await inter.methods.deposit(interInstance, toHex(deposit.commitment), []).send({ value, from: senderAccount, gas: 2e6 })
+  // await inter.methods.deposit(interInstance, toHex(deposit.commitment), []).send({ value, from: senderAccount, gas: 2e6 })
   await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
 
@@ -304,8 +305,11 @@ function parseNote(noteString) {
   }
 
   const buf = Buffer.from(match.groups.note, 'hex')
+  console.log(buf)
   const nullifier = bigInt.leBuff2int(buf.slice(0, 31))
+  console.log(nullifier)
   const secret = bigInt.leBuff2int(buf.slice(31, 62))
+  console.log(secret)
   const deposit = createDeposit({ nullifier, secret })
   const netId = Number(match.groups.netId)
 
@@ -376,11 +380,12 @@ async function main() {
     }
     window.withdraw = async () => {
       const noteString = prompt('Enter the note to withdraw')
-      const recipient = (await web3.eth.getAccounts())[0]
+      const recipient = prompt('Enter the address to withdraw')
+      // const recipient = (await web3.eth.getAccounts())[0]
 
       const { currency, amount, netId, deposit } = parseNote(noteString)
-      await init({ noteNetId: netId, currency, amount })
-      await withdraw({ deposit, currency, amount, recipient })
+      // await init({ noteNetId: netId, currency, amount })
+      // await withdraw({ deposit, currency, amount, recipient })
     }
   } else {
     console.log('Please deploy in browser')
