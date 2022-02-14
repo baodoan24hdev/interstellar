@@ -1,0 +1,101 @@
+body {
+  background-color: #242528;
+}
+
+img {
+  height: 3rem;
+}
+
+.btn-login {
+  background-color: #55cd87;
+  font-weight: 600;
+}
+
+.btn-tabs {
+  color: #b2b2b2 !important;
+  font-weight: 600;
+  line-height: 2.5rem;
+  font-size: 1.2rem;
+}
+
+.nav-link.active {
+  color: #495057 !important;
+}
+
+.card {
+  background-image: linear-gradient(215.2deg, #3a3a42 -4.49%, #2a2b31 107.38%);
+  width: 28rem;
+  background-color: #35363d;
+}
+
+.balance-content {
+  color: #b2b2b2;
+  font-weight: 600;
+  text-align: center;
+}
+
+.recipient-address {
+  font-weight: 500;
+  box-shadow: none;
+  background-color: #46474e;
+  color: #fafafa;
+  border: 0.1rem solid hsla(0, 0%, 100%, 0.2);
+  padding: 0.9rem 0.8rem;
+  font-size: 1rem;
+  line-height: 1.2;
+  border-radius: 0.3rem;
+}
+
+input:focus-visible {
+  outline: none;
+}
+
+.btn-main {
+  background-color: #55cd87;
+  font-weight: 600;
+  height: 3rem;
+}
+
+.modal-content {
+  background-image: linear-gradient(215.2deg, #3a3a42 -4.49%, #2a2b31 107.38%);
+  background-color: #35363d;
+  color: #b2b2b2;
+}
+
+.modal-header {
+  border-bottom: none;
+}
+
+.modal-title {
+  color: #55cd87;
+  font-size: 1.5rem;
+}
+
+.btn-close {
+  color: #55cd87;
+}
+
+.modal-footer {
+  border-top: none;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  font-size: 1.2rem;
+}
+
+.footer-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.social {
+  margin-left: auto;
+}
+
+.social a {
+  text-decoration: none;
+  color: #b2b2b2 !important;
+}
