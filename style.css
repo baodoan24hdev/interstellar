@@ -6,6 +6,13 @@ img {
   height: 3rem;
 }
 
+.user-wallet {
+  color: #b2b2b2;
+  font-weight: 600;
+  margin-left: auto;
+  margin-right: 0.8rem;
+}
+
 .btn-login {
   background-color: #55cd87;
   font-weight: 600;
@@ -98,4 +105,23 @@ input:focus-visible {
 .social a {
   text-decoration: none;
   color: #b2b2b2 !important;
+}
+
+.alert-success {
+  background-color: #55cd87;
+  color: #212529;
+  width: fit-content;
+  padding: 0.575rem 2rem;
+  border-radius: 0.25rem;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+  border: 1px solid transparent;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+a {
+  color: darkslategrey;
+  background-color: transparent;
+  text-decoration: none;
 }

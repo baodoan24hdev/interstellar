@@ -16,8 +16,14 @@ const { toWei, toBN, BN } = require('web3-utils')
 const config = require('./config')
 
 const userBalance = document.getElementById('userBalance')
+const inputNoteString = document.getElementById('inputNoteString')
 const noteText = document.getElementById('noteText')
-let myModal = new bootstrap.Modal(document.getElementById('exampleModal'), {})
+const loginButton = document.getElementById('loginButton')
+const userWallet = document.getElementById('userWallet')
+const alertLabel = document.getElementById('alert')
+const recipientAddress = document.getElementById('recipientAddress')
+let depositModal = new bootstrap.Modal(document.getElementById('depositModal'), {})
+let withdrawModal = new bootstrap.Modal(document.getElementById('withdrawModal'), {})
 
 let web3, inter, interContract, interInstance, circuit, proving_key, groth16, senderAccount, netId
 let MERKLE_TREE_HEIGHT, ETH_AMOUNT
@@ -69,7 +75,7 @@ async function deposit({ currency, amount }) {
   const note = toHex(deposit.preimage, 62)
   const noteString = `interstellar-${currency}-${amount}-${netId}-${note}`
   console.log(`Your note: ${noteString}`)
-  myModal.show()
+  depositModal.show()
   noteText.innerText = noteString
   await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
@@ -78,6 +84,13 @@ async function deposit({ currency, amount }) {
   await inter.methods.deposit(interInstance, toHex(deposit.commitment), []).send({ value, from: senderAccount, gas: 2e6 })
   await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
+
+  alertLabel.innerText = 'Withdraw 1 ETH successful!'
+  $('#alert').show()
+
+  setTimeout(() => {
+    $('#alert').hide()
+  }, 5000)
 
   return noteString
 }
@@ -199,16 +212,22 @@ async function withdraw({ deposit, currency, recipient, refund = '0' }) {
   const { proof, args } = await generateProof({ deposit, recipient, refund })
 
   console.log('Submitting withdraw transaction')
+  let txHashString
   await inter.methods
     .withdraw(interInstance, proof, ...args)
     .send({ from: senderAccount, value: refund.toString(), gas: 1e6 })
     .on('transactionHash', function (txHash) {
-      console.log(`The transaction hash is https://goerli.etherscan.io/tx/${txHash}`)
+      console.log(`The transaction hash is http://localhost:3000/transaction/${txHash}`)
+      txHashString = txHash
     })
     .on('error', function (e) {
       console.error('on transactionHash error', e.message)
     })
   console.log('Done')
+  alertLabel.innerHTML = `The transaction hash is <a href='http://localhost:3000/transaction/${txHashString}'>https://goerli.etherscan.io/tx/${txHashString}<a/>`
+  setTimeout(() => {
+    $('#alert').show()
+  }, 25000)
 }
 
 function fromDecimals({ amount, decimals }) {
@@ -335,6 +354,7 @@ async function init({ noteNetId, currency = 'dai', amount = '100' }) {
     MERKLE_TREE_HEIGHT = 20
     ETH_AMOUNT = 1e18
     senderAccount = accounts[0]
+    window.userWalletAddress = accounts[0]
     userBalance.innerText = web3.utils.fromWei(await web3.eth.getBalance(senderAccount))
   }
   // groth16 initialises a lot of Promises that will never be resolved, that's why we need to use process.exit to terminate the CLI
@@ -365,17 +385,58 @@ async function init({ noteNetId, currency = 'dai', amount = '100' }) {
   interContract = new web3.eth.Contract(instanceJson, interInstance)
 }
 
-async function main() {
+async function loginWithMetaMask() {
+  await init({ currency: 'eth', amount: '1' })
+  userWallet.innerText = window.userWalletAddress
+  loginButton.innerText = 'Sign out of MetaMask'
+
+  loginButton.removeEventListener('click', loginWithMetaMask)
+  $('#depositBtn').prop('disabled', false)
+  $('#withdrawBtn').prop('disabled', false)
+
+  setTimeout(() => {
+    loginButton.addEventListener('click', signOutOfMetaMask)
+  }, 200)
+}
+
+function signOutOfMetaMask() {
+  window.userWalletAddress = null
+  userWallet.innerText = ''
+  loginButton.innerText = 'Connect to Wallet'
+
+  loginButton.removeEventListener('click', signOutOfMetaMask)
+  $('#depositBtn').prop('disabled', true)
+  $('#withdrawBtn').prop('disabled', true)
+
+  setTimeout(() => {
+    loginButton.addEventListener('click', loginWithMetaMask)
+  }, 200)
+}
+
+function toggleButton() {
+  if (!window.ethereum) {
+    loginButton.innerText = 'MetaMask is not installed'
+    loginButton.classList.remove('bg-purple-500', 'text-white')
+    loginButton.classList.add('bg-gray-500', 'text-gray-100', 'cursor-not-allowed')
+    return false
+  }
+
+  loginButton.addEventListener('click', loginWithMetaMask)
+}
+
+function main() {
   if (inBrowser) {
     const instance = { currency: 'eth', amount: '1' }
-    await init(instance)
     window.deposit = async () => {
       await deposit(instance)
     }
     window.withdraw = async () => {
-      const noteString = prompt('Enter the note to withdraw')
-      const recipient = prompt('Enter the address to withdraw')
+      // const noteString = prompt('Enter the note to withdraw')
+      // const recipient = prompt('Enter the address to withdraw')
       // const recipient = (await web3.eth.getAccounts())[0]
+      const noteString = inputNoteString.value
+      const recipient = recipientAddress.value
+      withdrawModal.hide()
 
       const { currency, amount, netId, deposit } = parseNote(noteString)
       await init({ noteNetId: netId, currency, amount })
@@ -385,5 +446,9 @@ async function main() {
     console.log('Please deploy in browser')
   }
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+  toggleButton()
+})
 
 main()

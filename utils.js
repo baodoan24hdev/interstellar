@@ -6,3 +6,8 @@ function CopyToClipboard(id) {
   document.execCommand('copy')
   window.getSelection().removeAllRanges()
 }
+
+$(document).ready(function () {
+  $('#depositBtn').prop('disabled', true)
+  $('#withdrawBtn').prop('disabled', true)
+})

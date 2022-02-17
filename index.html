@@ -25,10 +25,9 @@
   <body>
     <nav class="navbar navbar-dark py-4">
       <div class="container">
-        <a class="navbar-brand"><img src="assets/logo.png" alt="" /></a>
-        <form class="d-flex">
-          <button class="btn btn-login" type="submit">Connect to Wallet</button>
-        </form>
+        <a class="navbar-brand"><img src="assets/logo2.png" alt="" /></a>
+        <p id="userWallet" class="user-wallet my-2"></p>
+        <button class="btn btn-login" type="submit" id="loginButton" onclick="">Connect to Wallet</button>
       </div>
     </nav>
     <div class="container mt-5">
@@ -73,22 +72,32 @@
                   </div>
                   <div class="tab-content" id="myTabContent">
                     <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
-                      <button type="submit" onclick="deposit()" class="btn btn-main w-100">Deposit 1 ETH</button>
+                      <button id="depositBtn" type="submit" onclick="deposit()" class="btn btn-main w-100">Deposit 1 ETH</button>
                     </div>
                     <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
                       <input
                         class="recipient-address w-100 mb-5"
                         type="text"
                         placeholder="Place recipient address here"
-                        autocomplete="nope"
+                        autocomplete="off"
+                        id="recipientAddress"
                       />
-                      <button type="submit" onclick="withdraw()" class="btn btn-main w-100">Withdraw 1 ETH</button>
+                      <button
+                        id="withdrawBtn"
+                        type="button"
+                        class="btn btn-main w-100"
+                        data-bs-toggle="modal"
+                        data-bs-target="#withdrawModal"
+                      >
+                        Withdraw 1 ETH
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          <div class="alert alert-success mt-5 mx-auto collapse" role="alert" id="alert"></div>
         </main>
       </div>
     </div>
@@ -97,7 +106,7 @@
         <span class="text-muted">Interstellar</span>
         <span class="social"
           ><a
-            href="https://github.com/tornadocash"
+            href="https://github.com"
             target="_blank"
             aria-label="Github"
             rel="noopener noreferrer nofollow"
@@ -111,7 +120,7 @@
         ></span>
       </div>
     </footer>
-    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal fade" id="depositModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -121,6 +130,26 @@
           <div class="modal-body" id="noteText" style="overflow-wrap: break-word"></div>
           <div class="modal-footer">
             <button type="button" class="btn btn-login" onclick="CopyToClipboard('noteText');return false;">Copy Note</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="withdrawModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Note</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <input
+            class="recipient-address w-60 mx-3"
+            type="text"
+            placeholder="Provide note string here"
+            autocomplete="off"
+            id="inputNoteString"
+          />
+          <div class="modal-footer">
+            <button type="submit" type="button" class="btn btn-login" onclick="withdraw()">Withdraw</button>
           </div>
         </div>
       </div>
