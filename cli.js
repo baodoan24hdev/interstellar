@@ -1,6 +1,4 @@
-#!/usr/bin/env node
-// Temporary demo client
-// Works both in browser and node.js
+
 
 require('dotenv').config()
 const assert = require('assert')
@@ -20,7 +18,6 @@ const inputNoteString = document.getElementById('inputNoteString')
 const noteText = document.getElementById('noteText')
 const loginButton = document.getElementById('loginButton')
 const userWallet = document.getElementById('userWallet')
-const alertLabel = document.getElementById('alert')
 const recipientAddress = document.getElementById('recipientAddress')
 let depositModal = new bootstrap.Modal(document.getElementById('depositModal'), {})
 let withdrawModal = new bootstrap.Modal(document.getElementById('withdrawModal'), {})
@@ -68,6 +65,17 @@ function createDeposit({ nullifier, secret }) {
  * @param amount Deposit amount
  */
 async function deposit({ currency, amount }) {
+  if (web3.utils.fromWei(await web3.eth.getBalance(senderAccount)) < amount) {
+    $('#alertDanger').text('ETH balance is not enough!')
+
+    $('#alertDanger').show()
+
+    setTimeout(() => {
+      $('#alertDanger').hide()
+    }, 5000)
+    return ''
+  }
+
   const deposit = createDeposit({
     nullifier: rbigint(31),
     secret: rbigint(31)
@@ -77,6 +85,10 @@ async function deposit({ currency, amount }) {
   console.log(`Your note: ${noteString}`)
   depositModal.show()
   noteText.innerText = noteString
+  $('#mainCard').css('display', 'none')
+  $('#loadingText').text('Waiting for deposit...')
+  $('#loadingCard').css('display', 'block')
+
   await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
   const value = isLocalRPC ? ETH_AMOUNT : fromDecimals({ amount, decimals: 18 })
@@ -85,11 +97,17 @@ async function deposit({ currency, amount }) {
   await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
 
-  alertLabel.innerText = 'Withdraw 1 ETH successful!'
-  $('#alert').show()
+  $('#mainCard').css('display', 'block')
+  $('#loadingCard').css('display', 'none')
+
+  $('#alertSuccess').text('Withdraw 1 ETH successful!')
+
+  userBalance.innerText = web3.utils.fromWei(await web3.eth.getBalance(senderAccount))
+
+  $('#alertSuccess').show()
 
   setTimeout(() => {
-    $('#alert').hide()
+    $('#alertSuccess').hide()
   }, 5000)
 
   return noteString
@@ -97,12 +115,9 @@ async function deposit({ currency, amount }) {
 
 /**
  * Generate merkle tree for a deposit.
- * Download deposit events from the interstellar, reconstructs merkle tree, finds our deposit leaf
- * in it and generates merkle proof
  */
 async function generateMerkleProof(deposit, amount) {
   let leafIndex = -1
-  // Get all deposit events from smart contract and assemble merkle tree from them
 
   const cachedEvents = loadCachedEvents({ type: 'Deposit', amount })
 
@@ -139,7 +154,6 @@ async function generateMerkleProof(deposit, amount) {
     })
   const tree = new merkleTree(MERKLE_TREE_HEIGHT, leaves)
 
-  // Validate that our data is correct
   const root = await tree.root()
   const isValidRoot = await interContract.methods.isKnownRoot(toHex(root)).call()
   const isSpent = await interContract.methods.isSpent(toHex(deposit.nullifierHash)).call()
@@ -153,11 +167,6 @@ async function generateMerkleProof(deposit, amount) {
 
 /**
  * Generate SNARK proof for withdrawal
- * @param deposit Deposit object
- * @param recipient Funds recipient
- * @param relayer Relayer address
- * @param fee Relayer fee
- * @param refund Receive ether for exchanged tokens
  */
 async function generateProof({ deposit, amount, recipient, relayerAddress = 0, fee = 0, refund = 0 }) {
   // Compute merkle proof of our commitment
@@ -200,13 +209,16 @@ async function generateProof({ deposit, amount, recipient, relayerAddress = 0, f
 
 /**
  * Do an ETH withdrawal
- * @param noteString Note to withdraw
- * @param recipient Recipient address
  */
 async function withdraw({ deposit, currency, recipient, refund = '0' }) {
   if (currency === 'eth' && refund !== '0') {
     throw new Error('The ETH purchase is supposted to be 0 for ETH withdrawals')
   }
+
+  $('#mainCard').css('display', 'none')
+  $('#loadingText').text('Waiting for withdraw...')
+  $('#loadingCard').css('display', 'block')
+
   refund = toWei(refund)
   // using private key
   const { proof, args } = await generateProof({ deposit, recipient, refund })
@@ -224,9 +236,13 @@ async function withdraw({ deposit, currency, recipient, refund = '0' }) {
       console.error('on transactionHash error', e.message)
     })
   console.log('Done')
-  alertLabel.innerHTML = `The transaction hash is <a href='http://localhost:3000/transaction/${txHashString}'>https://goerli.etherscan.io/tx/${txHashString}<a/>`
+  $('#alertSuccess').text(
+    `The transaction hash is <a href='http://localhost:3000/transaction/${txHashString}'>${txHashString}<a/>`
+  )
   setTimeout(() => {
-    $('#alert').show()
+    $('#mainCard').css('display', 'block')
+    $('#loadingCard').css('display', 'none')
+    $('#alertSuccess').show()
   }, 25000)
 }
 
@@ -245,7 +261,6 @@ function fromDecimals({ amount, decimals }) {
     throw new Error('[ethjs-unit] while converting number ' + amount + ' to wei, invalid value')
   }
 
-  // Split it into a whole and fractional part
   const comps = ether.split('.')
   if (comps.length > 2) {
     throw new Error('[ethjs-unit] while converting number ' + amount + ' to wei,  too many decimal points')
@@ -281,9 +296,6 @@ function fromDecimals({ amount, decimals }) {
 
 /**
  * Waits for transaction to be mined
- * @param txHash Hash of transaction
- * @param attempts
- * @param delay
  */
 
 function loadCachedEvents({ type, amount }) {
@@ -339,10 +351,7 @@ function parseNote(noteString) {
  */
 async function init({ noteNetId, currency = 'dai', amount = '100' }) {
   let contractJson, instanceJson, erc20interJson, interAddress
-  // TODO do we need this? should it work in browser really?
   if (inBrowser) {
-    // Initialize using injected web3 (Metamask)
-    // To assemble web version run `npm run browserify`
     web3 = new Web3(window['ethereum'], null, {
       transactionConfirmationBlocks: 1
     })
@@ -357,7 +366,6 @@ async function init({ noteNetId, currency = 'dai', amount = '100' }) {
     window.userWalletAddress = accounts[0]
     userBalance.innerText = web3.utils.fromWei(await web3.eth.getBalance(senderAccount))
   }
-  // groth16 initialises a lot of Promises that will never be resolved, that's why we need to use process.exit to terminate the CLI
   groth16 = await buildGroth16()
   netId = await web3.eth.net.getId()
   if (noteNetId && Number(noteNetId) !== netId) {
@@ -446,6 +454,10 @@ function main() {
     console.log('Please deploy in browser')
   }
 }
+
+$('#btnAutofill').click(() => {
+  $('#recipientAddress').val(senderAccount)
+})
 
 window.addEventListener('DOMContentLoaded', () => {
   toggleButton()

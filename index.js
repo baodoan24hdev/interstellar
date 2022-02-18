@@ -22,7 +22,6 @@ const inputNoteString = document.getElementById('inputNoteString')
 const noteText = document.getElementById('noteText')
 const loginButton = document.getElementById('loginButton')
 const userWallet = document.getElementById('userWallet')
-const alertLabel = document.getElementById('alert')
 const recipientAddress = document.getElementById('recipientAddress')
 let depositModal = new bootstrap.Modal(document.getElementById('depositModal'), {})
 let withdrawModal = new bootstrap.Modal(document.getElementById('withdrawModal'), {})
@@ -70,6 +69,17 @@ function createDeposit({ nullifier, secret }) {
  * @param amount Deposit amount
  */
 async function deposit({ currency, amount }) {
+  if (web3.utils.fromWei(await web3.eth.getBalance(senderAccount)) < amount) {
+    $('#alertDanger').text('ETH balance is not enough!')
+
+    $('#alertDanger').show()
+
+    setTimeout(() => {
+      $('#alertDanger').hide()
+    }, 5000)
+    return ''
+  }
+
   const deposit = createDeposit({
     nullifier: rbigint(31),
     secret: rbigint(31)
@@ -79,6 +89,10 @@ async function deposit({ currency, amount }) {
   console.log(`Your note: ${noteString}`)
   depositModal.show()
   noteText.innerText = noteString
+  $('#mainCard').css('display', 'none')
+  $('#loadingText').text('Waiting for deposit...')
+  $('#loadingCard').css('display', 'block')
+
   await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
   const value = isLocalRPC ? ETH_AMOUNT : fromDecimals({ amount, decimals: 18 })
@@ -87,11 +101,17 @@ async function deposit({ currency, amount }) {
   await printETHBalance({ address: inter._address, name: 'Interstellar' })
   await printETHBalance({ address: senderAccount, name: 'Sender account' })
 
-  alertLabel.innerText = 'Withdraw 1 ETH successful!'
-  $('#alert').show()
+  $('#mainCard').css('display', 'block')
+  $('#loadingCard').css('display', 'none')
+
+  $('#alertSuccess').text('Withdraw 1 ETH successful!')
+
+  userBalance.innerText = web3.utils.fromWei(await web3.eth.getBalance(senderAccount))
+
+  $('#alertSuccess').show()
 
   setTimeout(() => {
-    $('#alert').hide()
+    $('#alertSuccess').hide()
   }, 5000)
 
   return noteString
@@ -209,6 +229,11 @@ async function withdraw({ deposit, currency, recipient, refund = '0' }) {
   if (currency === 'eth' && refund !== '0') {
     throw new Error('The ETH purchase is supposted to be 0 for ETH withdrawals')
   }
+
+  $('#mainCard').css('display', 'none')
+  $('#loadingText').text('Waiting for withdraw...')
+  $('#loadingCard').css('display', 'block')
+
   refund = toWei(refund)
   // using private key
   const { proof, args } = await generateProof({ deposit, recipient, refund })
@@ -226,9 +251,13 @@ async function withdraw({ deposit, currency, recipient, refund = '0' }) {
       console.error('on transactionHash error', e.message)
     })
   console.log('Done')
-  alertLabel.innerHTML = `The transaction hash is <a href='http://localhost:3000/transaction/${txHashString}'>https://goerli.etherscan.io/tx/${txHashString}<a/>`
+  $('#alertSuccess').text(
+    `The transaction hash is <a href='http://localhost:3000/transaction/${txHashString}'>${txHashString}<a/>`
+  )
   setTimeout(() => {
-    $('#alert').show()
+    $('#mainCard').css('display', 'block')
+    $('#loadingCard').css('display', 'none')
+    $('#alertSuccess').show()
   }, 25000)
 }
 
@@ -371,6 +400,7 @@ async function init({ noteNetId, currency = 'dai', amount = '100' }) {
     interAddress = currency === 'eth' ? contractJson.networks[netId].address : erc20interJson.networks[netId].address
     senderAccount = (await web3.eth.getAccounts())[0]
   } else {
+    console.log(netId)
     try {
       interAddress = config.deployments[`netId${netId}`].proxy
       interInstance = config.deployments[`netId${netId}`][currency].instanceAddress[amount]
@@ -448,6 +478,10 @@ function main() {
     console.log('Please deploy in browser')
   }
 }
+
+$('#btnAutofill').click(() => {
+  $('#recipientAddress').val(senderAccount)
+})
 
 window.addEventListener('DOMContentLoaded', () => {
   toggleButton()

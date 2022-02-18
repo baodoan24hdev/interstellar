@@ -120,8 +120,31 @@ input:focus-visible {
   font-weight: 500;
 }
 
+.alert-danger {
+  color: #212529;
+  width: fit-content;
+  padding: 0.575rem 2rem;
+  border-radius: 0.25rem;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+  border: 1px solid transparent;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
 a {
   color: darkslategrey;
   background-color: transparent;
   text-decoration: none;
+}
+
+.btn-autofill {
+  background-color: transparent;
+  border: none;
+  color: #b2b2b2;
+  float: right;
+}
+
+.btn-autofill:hover {
+  color: #fafafa;
 }
