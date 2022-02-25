@@ -1,9 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 (function (process,Buffer){(function (){
-
-// Temporary demo client
-// Works both in browser and node.js
-
 require('dotenv').config()
 const assert = require('assert')
 const snarkjs = require('snarkjs')
@@ -23,6 +19,7 @@ const noteText = document.getElementById('noteText')
 const loginButton = document.getElementById('loginButton')
 const userWallet = document.getElementById('userWallet')
 const recipientAddress = document.getElementById('recipientAddress')
+const alertSuccessContent = document.getElementById('alertSuccess')
 let depositModal = new bootstrap.Modal(document.getElementById('depositModal'), {})
 let withdrawModal = new bootstrap.Modal(document.getElementById('withdrawModal'), {})
 
@@ -119,12 +116,9 @@ async function deposit({ currency, amount }) {
 
 /**
  * Generate merkle tree for a deposit.
- * Download deposit events from the interstellar, reconstructs merkle tree, finds our deposit leaf
- * in it and generates merkle proof
  */
 async function generateMerkleProof(deposit, amount) {
   let leafIndex = -1
-  // Get all deposit events from smart contract and assemble merkle tree from them
 
   const cachedEvents = loadCachedEvents({ type: 'Deposit', amount })
 
@@ -161,7 +155,6 @@ async function generateMerkleProof(deposit, amount) {
     })
   const tree = new merkleTree(MERKLE_TREE_HEIGHT, leaves)
 
-  // Validate that our data is correct
   const root = await tree.root()
   const isValidRoot = await interContract.methods.isKnownRoot(toHex(root)).call()
   const isSpent = await interContract.methods.isSpent(toHex(deposit.nullifierHash)).call()
@@ -175,11 +168,6 @@ async function generateMerkleProof(deposit, amount) {
 
 /**
  * Generate SNARK proof for withdrawal
- * @param deposit Deposit object
- * @param recipient Funds recipient
- * @param relayer Relayer address
- * @param fee Relayer fee
- * @param refund Receive ether for exchanged tokens
  */
 async function generateProof({ deposit, amount, recipient, relayerAddress = 0, fee = 0, refund = 0 }) {
   // Compute merkle proof of our commitment
@@ -222,8 +210,6 @@ async function generateProof({ deposit, amount, recipient, relayerAddress = 0, f
 
 /**
  * Do an ETH withdrawal
- * @param noteString Note to withdraw
- * @param recipient Recipient address
  */
 async function withdraw({ deposit, currency, recipient, refund = '0' }) {
   if (currency === 'eth' && refund !== '0') {
@@ -251,14 +237,14 @@ async function withdraw({ deposit, currency, recipient, refund = '0' }) {
       console.error('on transactionHash error', e.message)
     })
   console.log('Done')
-  $('#alertSuccess').text(
-    `The transaction hash is <a href='http://localhost:3000/transaction/${txHashString}'>${txHashString}<a/>`
+  $('#alertSuccess').html(
+    `The transaction hash is <a href="http://localhost:3000/transaction/${txHashString}">${txHashString}</a>`
   )
   setTimeout(() => {
     $('#mainCard').css('display', 'block')
     $('#loadingCard').css('display', 'none')
     $('#alertSuccess').show()
-  }, 25000)
+  }, 40000)
 }
 
 function fromDecimals({ amount, decimals }) {
@@ -276,7 +262,6 @@ function fromDecimals({ amount, decimals }) {
     throw new Error('[ethjs-unit] while converting number ' + amount + ' to wei, invalid value')
   }
 
-  // Split it into a whole and fractional part
   const comps = ether.split('.')
   if (comps.length > 2) {
     throw new Error('[ethjs-unit] while converting number ' + amount + ' to wei,  too many decimal points')
@@ -312,9 +297,6 @@ function fromDecimals({ amount, decimals }) {
 
 /**
  * Waits for transaction to be mined
- * @param txHash Hash of transaction
- * @param attempts
- * @param delay
  */
 
 function loadCachedEvents({ type, amount }) {
@@ -370,10 +352,7 @@ function parseNote(noteString) {
  */
 async function init({ noteNetId, currency = 'dai', amount = '100' }) {
   let contractJson, instanceJson, erc20interJson, interAddress
-  // TODO do we need this? should it work in browser really?
   if (inBrowser) {
-    // Initialize using injected web3 (Metamask)
-    // To assemble web version run `npm run browserify`
     web3 = new Web3(window['ethereum'], null, {
       transactionConfirmationBlocks: 1
     })
@@ -388,7 +367,6 @@ async function init({ noteNetId, currency = 'dai', amount = '100' }) {
     window.userWalletAddress = accounts[0]
     userBalance.innerText = web3.utils.fromWei(await web3.eth.getBalance(senderAccount))
   }
-  // groth16 initialises a lot of Promises that will never be resolved, that's why we need to use process.exit to terminate the CLI
   groth16 = await buildGroth16()
   netId = await web3.eth.net.getId()
   if (noteNetId && Number(noteNetId) !== netId) {
@@ -400,7 +378,6 @@ async function init({ noteNetId, currency = 'dai', amount = '100' }) {
     interAddress = currency === 'eth' ? contractJson.networks[netId].address : erc20interJson.networks[netId].address
     senderAccount = (await web3.eth.getAccounts())[0]
   } else {
-    console.log(netId)
     try {
       interAddress = config.deployments[`netId${netId}`].proxy
       interInstance = config.deployments[`netId${netId}`][currency].instanceAddress[amount]

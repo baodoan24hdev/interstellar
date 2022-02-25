@@ -1,5 +1,3 @@
-
-
 require('dotenv').config()
 const assert = require('assert')
 const snarkjs = require('snarkjs')
@@ -19,6 +17,7 @@ const noteText = document.getElementById('noteText')
 const loginButton = document.getElementById('loginButton')
 const userWallet = document.getElementById('userWallet')
 const recipientAddress = document.getElementById('recipientAddress')
+const alertSuccessContent = document.getElementById('alertSuccess')
 let depositModal = new bootstrap.Modal(document.getElementById('depositModal'), {})
 let withdrawModal = new bootstrap.Modal(document.getElementById('withdrawModal'), {})
 
@@ -236,14 +235,14 @@ async function withdraw({ deposit, currency, recipient, refund = '0' }) {
       console.error('on transactionHash error', e.message)
     })
   console.log('Done')
-  $('#alertSuccess').text(
-    `The transaction hash is <a href='http://localhost:3000/transaction/${txHashString}'>${txHashString}<a/>`
+  $('#alertSuccess').html(
+    `The transaction hash is <a href="http://localhost:3000/transaction/${txHashString}">${txHashString}</a>`
   )
   setTimeout(() => {
     $('#mainCard').css('display', 'block')
     $('#loadingCard').css('display', 'none')
     $('#alertSuccess').show()
-  }, 25000)
+  }, 40000)
 }
 
 function fromDecimals({ amount, decimals }) {
